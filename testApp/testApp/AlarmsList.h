@@ -10,7 +10,7 @@
 
 @interface AlarmsList : NSObject
 {
-	//NSMutableArray *alarms;
+
 }
 @property (nonatomic, strong) NSMutableArray *alarms;
 

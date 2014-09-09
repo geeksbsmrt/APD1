@@ -7,8 +7,13 @@
 //
 
 #import <UIKit/UIKit.h>
+#import "AlarmsList.h"
+#import "scheduler.h"
 
 @interface AppDelegate : UIResponder <UIApplicationDelegate>
+{
+	AlarmsList *alarmsList;
+}
 
 @property (strong, nonatomic) UIWindow *window;
 

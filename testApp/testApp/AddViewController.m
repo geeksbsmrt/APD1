@@ -36,8 +36,6 @@
 											 selector:@selector(keyboardWillBeHidden:)
 												 name:UIKeyboardWillHideNotification object:nil];
 	
-//	[scroll setContentSize:CGSizeMake(320,800)];
-	
 	
 	UITapGestureRecognizer *singleTap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(singleTapGestureCaptured:)];
 	[scroll addGestureRecognizer:singleTap];
@@ -54,15 +52,18 @@
 		
 		[commit setTitle:@"Save" forState:UIControlStateNormal];
 		[remove setHidden:NO];
+		[latePreview setHidden:NO];
+		[outPreview setHidden:NO];
 		//Set values from the alarm
 
 		AlarmsInfo *editAlarm = [alarms objectAtIndex:sentAlarm];
 		
 		[name setText:[editAlarm alarmName]];
 		[to setText:[editAlarm toEmail]];
-		[from setText:[editAlarm fromEmail]];
+		[outSubject setText:[editAlarm outSubject]];
 		[subject setText:[editAlarm emailSubject]];
-		[body setText:[editAlarm emailBody]];
+		[lateBody setText:[editAlarm lateBody]];
+		[outBody setText:[editAlarm outBody]];
 		[sun setOn:[[[editAlarm alarmDays]objectAtIndex:0] boolValue]];
 		[mon setOn:[[[editAlarm alarmDays]objectAtIndex:1] boolValue]];
 		[tue setOn:[[[editAlarm alarmDays]objectAtIndex:2] boolValue]];
@@ -79,8 +80,36 @@
 		NSDateFormatter *timeFormatter = [[NSDateFormatter alloc] init];
 		timeFormatter.dateFormat = [NSDateFormatter dateFormatFromTemplate:@"hh:mm a" options:0 locale:[NSLocale currentLocale]];
 		[picker setDate:[timeFormatter dateFromString:[editAlarm alarmTime]]];
-		
-		
+
+	} else {
+		defaults = [NSUserDefaults standardUserDefaults];
+		if ([defaults objectForKey:@"ouSubject"] != nil) {
+			[outSubject setText:[defaults objectForKey:@"outSubject"]];
+		}
+		if ([defaults objectForKey:@"to"] != nil) {
+			[to setText:[defaults objectForKey:@"to"]];
+		}
+		if ([defaults objectForKey:@"subject"] != nil) {
+			[subject setText:[defaults objectForKey:@"subject"]];
+		}
+		if ([defaults objectForKey:@"lateBody"] != nil) {
+			[lateBody setText:[defaults objectForKey:@"lateBody"]];
+		}
+		if ([defaults objectForKey:@"outBody"] != nil) {
+			[outBody setText:[defaults objectForKey:@"outBody"]];
+		}
+		if ([defaults objectForKey:@"snoozeDur"] != nil) {
+			[snoozeDur setText:[defaults objectForKey:@"snoozeDur"]];
+		}
+		if ([defaults objectForKey:@"lateStepper"] != nil) {
+			[lateStepper setValue:[[defaults objectForKey:@"lateStepper"] doubleValue]];
+			[lateSnoozes setText:[NSString stringWithFormat:@"%d", (int)lateStepper.value]];
+		}
+		if ([defaults objectForKey:@"outStepper"] != nil) {
+			[outStepper setValue:[[defaults objectForKey:@"outStepper"] doubleValue]];
+			[outSnoozes setText:[NSString stringWithFormat:@"%d", (int)outStepper.value]];
+		}
+
 	}
 //	NSCalendar *calendar = [NSCalendar autoupdatingCurrentCalendar];
 //	NSDateComponents *timeComponents = [calendar components:( NSHourCalendarUnit | NSMinuteCalendarUnit)fromDate:picker.date];
@@ -119,9 +148,10 @@
 			[editAlarm setAlarmName: [name text]];
 			[editAlarm setAlarmTime: alarmTime];
 			[editAlarm setAlarmTone:nil];
-			[editAlarm setEmailBody: [body text]];
+			[editAlarm setLateBody: [lateBody text]];
+			[editAlarm setOutBody: [outBody text]];
 			[editAlarm setEmailSubject: [subject text]];
-			[editAlarm setFromEmail: [from text]];
+			[editAlarm setOutSubject: [outSubject text]];
 			[editAlarm setToEmail: [to text]];
 			[editAlarm setLateSnoozes: [NSNumber numberWithDouble:(int)lateStepper.value]];
 			[editAlarm setOutSnoozes: [NSNumber numberWithDouble:(int)outStepper.value]];
@@ -137,55 +167,39 @@
 			}
 			
 		} else {
-			//Save stuff
-			NSCalendar *calendar = [NSCalendar autoupdatingCurrentCalendar];
+		//Save stuff
+			
 			alarmDate =	picker.date;
 			NSDateFormatter *timeFormatter = [[NSDateFormatter alloc] init];
 			timeFormatter.dateFormat = [NSDateFormatter dateFormatFromTemplate:@"hh:mm a" options:0 locale:[NSLocale currentLocale]];
 			NSString *alarmTime = [timeFormatter stringFromDate:alarmDate];
+			
+			NSDictionary *alarmOptions = [[NSMutableDictionary alloc] init];
+			
+			[alarmOptions setValue:[NSNumber numberWithInt:(int)lateStepper.value] forKey:@"LateSnoozes"];
+			[alarmOptions setValue:[NSNumber numberWithInt:(int)outStepper.value] forKey:@"OutSnoozes"];
+			[alarmOptions setValue:[NSNumber numberWithInt:(int)lateStepper.value] forKey:@"OrigLateSnoozes"];
+			[alarmOptions setValue:[NSNumber numberWithInt:(int)outStepper.value] forKey:@"OrigOutSnoozes"];
+			[alarmOptions setValue:[NSString stringWithFormat:@"%@", [name text]] forKey:@"Name"];
+			[alarmOptions setValue:[NSNumber numberWithInt:[snoozeDur.text intValue]] forKey:@"snoozeDur"];
+			[alarmOptions setValue:[NSString stringWithFormat:@"%@", [outBody text]] forKey:@"OutBody"];
+			[alarmOptions setValue:[NSString stringWithFormat:@"%@", [lateBody text]] forKey:@"LateBody"];
+			[alarmOptions setValue:[NSString stringWithFormat:@"%@", [subject text]] forKey:@"Subject"];
+			[alarmOptions setValue:[NSString stringWithFormat:@"%@", [outSubject text]] forKey:@"OutSubject"];
+			[alarmOptions setValue:[NSString stringWithFormat:@"%@", [to text]] forKey:@"To"];
+			[alarmOptions setValue:[NSString stringWithFormat:@"%@", [name text]] forKey:@"AlertTitle"];
+			[alarmOptions setValue:[NSString stringWithFormat:@"%@", alarmTime] forKey:@"AlarmTime"];
+			
+			
+			[scheduler scheduleNotification:picker.date options:alarmOptions];
 
-		
-		NSDateComponents *timeComponents = [calendar components:(NSHourCalendarUnit | NSMinuteCalendarUnit)fromDate:picker.date];
-
-		NSDateFormatter *test = [[NSDateFormatter alloc] init];
-		[test setDateStyle:NSDateFormatterMediumStyle];
-		NSDate *myDate = [test dateFromString:[test stringFromDate:[NSDate date]]];
-
-		NSDateComponents *components = [calendar components:(NSYearCalendarUnit | NSMonthCalendarUnit |  NSDayCalendarUnit | NSHourCalendarUnit | NSMinuteCalendarUnit) fromDate:myDate];
-		[components setHour:timeComponents.hour];
-		[components setMinute:timeComponents.minute];
-
-
-		NSDate *itemDate = [calendar dateFromComponents:components];
-
-		
-		UILocalNotification *localNotif = [[UILocalNotification alloc] init];
-		if (localNotif == nil)
-			return;
-		localNotif.fireDate = itemDate;
-		localNotif.timeZone = [NSTimeZone defaultTimeZone];
-		
-		// Notification details
-		localNotif.alertBody = @"Test";;
-		// Set the action button
-		localNotif.alertAction = @"View";
-		
-		localNotif.soundName = UILocalNotificationDefaultSoundName;
-		localNotif.applicationIconBadgeNumber = 1;
-		
-		// Specify custom data for the notification
-		//NSDictionary *infoDict = [NSDictionary dictionaryWithObject:@"someValue" forKey:@"someKey"];
-		//localNotif.userInfo = infoDict;
-		
-		// Schedule the notification
-		[[UIApplication sharedApplication] scheduleLocalNotification:localNotif];
-		
-		alarmDays = [[NSMutableArray alloc] initWithObjects: [NSNumber numberWithBool:[sun isOn]], [NSNumber numberWithBool:[mon isOn]], [NSNumber numberWithBool:[tue isOn]], [NSNumber numberWithBool:[wed isOn]], [NSNumber numberWithBool:[thu isOn]], [NSNumber numberWithBool:[fri isOn]], [NSNumber numberWithBool:[sat isOn]], nil];
-		
-		AlarmsInfo *alarm = [[AlarmsInfo alloc] initWithName:name.text time:alarmTime days:alarmDays lateSnoozes:[NSNumber numberWithDouble:(int)lateStepper.value] outSnoozes:[NSNumber numberWithDouble:(int)outStepper.value] toEmail:to.text fromEmail:from.text emailSubject:subject.text emailBody:body.text alarmTone:nil snoozeLength:[NSNumber numberWithInt:[snoozeDur.text intValue]]];
-		
-		
-		[alarms addObject:alarm];
+			
+			alarmDays = [[NSMutableArray alloc] initWithObjects: [NSNumber numberWithBool:[sun isOn]], [NSNumber numberWithBool:[mon isOn]], [NSNumber numberWithBool:[tue isOn]], [NSNumber numberWithBool:[wed isOn]], [NSNumber numberWithBool:[thu isOn]], [NSNumber numberWithBool:[fri isOn]], [NSNumber numberWithBool:[sat isOn]], nil];
+			
+				AlarmsInfo *alarm = [[AlarmsInfo alloc] initWithName:name.text time:alarmTime days:alarmDays lateSnoozes:[NSNumber numberWithDouble:(int)lateStepper.value] outSnoozes:[NSNumber numberWithDouble:(int)outStepper.value] toEmail:to.text outSubject:outSubject.text emailSubject:subject.text lateBody:lateBody.text outBody:outBody.text alarmTone:nil snoozeLength:[NSNumber numberWithInt:[snoozeDur.text intValue]]];
+			
+			
+			[alarms addObject:alarm];
 			
 			NSString *alertMessage = [NSString stringWithFormat:@"%@ has been set for %@.", [name text], alarmTime];
 			status = [[UIAlertView alloc] initWithTitle:@"Alarm Saved" message:alertMessage	delegate:self cancelButtonTitle:@"OK" otherButtonTitles:nil];
@@ -204,10 +218,77 @@
 			//Delete
 			confirm = [[UIAlertView alloc] initWithTitle:@"Confirm Delete" message:[NSString stringWithFormat:@"Are you sure you want to delete %@?", [[alarms objectAtIndex:sentAlarm] alarmName]] delegate:self cancelButtonTitle:@"Yes" otherButtonTitles:@"No", nil];
 			[confirm show];
+			break;
+		case 3:
+		{
+			//Late Preview
+			MFMailComposeViewController *mc = [[MFMailComposeViewController alloc] init];
+			mc.mailComposeDelegate = self;
+			[mc setSubject:subject.text];
+			[mc setMessageBody:lateBody.text isHTML:NO];
+			[mc setToRecipients:[NSArray arrayWithObject:to.text]];
+
+			// Present mail view controller on screen
+			[self presentViewController:mc animated:YES completion:nil];
+			break;
+		}
+		case 4:
+		{
+			//Out Preview
+			MFMailComposeViewController *mc = [[MFMailComposeViewController alloc] init];
+			mc.mailComposeDelegate = self;
+			[mc setSubject:subject.text];
+			[mc setMessageBody:outBody.text isHTML:NO];
+			[mc setToRecipients:[NSArray arrayWithObject:to.text]];
+			
+			// Present mail view controller on screen
+			[self presentViewController:mc animated:YES completion:nil];
+			break;
+		}
 		default:
 			break;
 	}
 }
+
+- (void) mailComposeController:(MFMailComposeViewController *)controller didFinishWithResult:(MFMailComposeResult)result error:(NSError *)error
+{
+    switch (result)
+    {
+        case MFMailComposeResultCancelled:
+		{
+			NSLog(@"Mail cancelled");
+			UIAlertView *notAllowed = [[UIAlertView alloc] initWithTitle:@"Not Allowed" message:@"You are not allowed to cancel sending this eamil." delegate:self cancelButtonTitle:@"OK" otherButtonTitles:nil];
+			if (notAllowed) {
+				[notAllowed show];
+			}
+			break;
+		}
+        case MFMailComposeResultSaved:
+		{
+			NSLog(@"Mail saved");
+			UIAlertView *notAllowed = [[UIAlertView alloc] initWithTitle:@"Not Allowed" message:@"You are not allowed to cancel sending this eamil." delegate:self cancelButtonTitle:@"OK" otherButtonTitles:nil];
+			if (notAllowed) {
+				[notAllowed show];
+			}
+			break;
+		}
+        case MFMailComposeResultSent:
+		{
+			NSLog(@"Mail sent");
+			break;
+		}
+        case MFMailComposeResultFailed:
+		{
+			NSLog(@"Mail sent failure: %@", [error localizedDescription]);
+			break;
+		}
+        default:
+		break;
+    }
+    
+    
+}
+
 
 -(IBAction)onChange:(id)sender
 {
@@ -218,11 +299,23 @@
 			//Late
 			
 			[lateSnoozes setText:[NSString stringWithFormat:@"%d", (int)stepper.value]];
-			
+			[outStepper setMinimumValue:(stepper.value + 1)];
+			[outSnoozes setText:[NSString stringWithFormat:@"%d", (int)outStepper.value]];
+			if (lateStepper.value == 0) {
+				[outStepper setMinimumValue:0];
+			}
 			break;
 		case 1:
 			//out
 			[outSnoozes setText:[NSString stringWithFormat:@"%d", (int)stepper.value]];
+			if (outStepper.value == lateStepper.value ) {
+				[lateStepper setValue:(stepper.value - 1)];
+				[lateSnoozes setText:[NSString stringWithFormat:@"%d", (int)stepper.value]];
+			} else if (outStepper.value == 0) {
+				[lateStepper setMinimumValue:0];
+				[lateStepper setMaximumValue:100];
+			}
+
 			break;
 		default:
 			break;
@@ -234,9 +327,19 @@
 	if ([alertView.title isEqualToString:@"Confirm Delete"]) {
 		switch (buttonIndex) {
 			case 0:
+			{
+				
+				NSArray *notifs = [[UIApplication sharedApplication] scheduledLocalNotifications];
+				
+				for (int i=0; i < notifs.count; i++) {
+					if ([[[notifs[i] userInfo] objectForKey:@"AlarmTime"] isEqualToString:[[alarms objectAtIndex:(int)sentAlarm] alarmTime]]) {
+						[[UIApplication sharedApplication] cancelLocalNotification:notifs[i]];
+					}
+				}
 				[alarms removeObjectAtIndex:(int)sentAlarm];
 				[self dismissViewControllerAnimated:YES completion:nil];
 				break;
+			}
 			default:
 				break;
 		}
@@ -244,7 +347,7 @@
 	} else {
 		switch (buttonIndex) {
 			case 0:
-				[self dismissViewControllerAnimated:YES completion:nil];				
+				[self dismissViewControllerAnimated:YES completion:nil];
 				break;
 				
 			default:

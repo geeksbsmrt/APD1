@@ -9,8 +9,10 @@
 #import <UIKit/UIKit.h>
 #import "AlarmsList.h"
 #import "AlarmsInfo.h"
+#import <MessageUI/MessageUI.h>
+#import "scheduler.h"
 
-@interface AddViewController : UIViewController <UIAlertViewDelegate>
+@interface AddViewController : UIViewController <UIAlertViewDelegate, MFMailComposeViewControllerDelegate>
 {
 	IBOutlet UIDatePicker *picker;
 	UIAlertView *status;
@@ -23,7 +25,8 @@
 	IBOutlet UILabel *lateSnoozes;
 	IBOutlet UITextField *to;
 	IBOutlet UITextField *subject;
-	IBOutlet UITextView *body;
+	IBOutlet UITextView *lateBody;
+	IBOutlet UITextView *outBody;
 	IBOutlet UISwitch *sun;
 	IBOutlet UISwitch *mon;
 	IBOutlet UISwitch *tue;
@@ -34,13 +37,16 @@
 	IBOutlet UIStepper *outStepper;
 	IBOutlet UIStepper *lateStepper;
 	IBOutlet UITextField *name;
-	IBOutlet UITextField *from;
+	IBOutlet UITextField *outSubject;
 	NSMutableArray *alarmDays;
 	IBOutlet UIButton *commit;
 	IBOutlet UIButton *remove;
 	UIAlertView *confirm;
 	int sentAlarm;
 	UITextField *activeField;
+	NSUserDefaults *defaults;
+	IBOutlet UIButton *latePreview;
+	IBOutlet UIButton *outPreview;
 	
 }
 
@@ -48,5 +54,7 @@
 
 -(IBAction)onClick:(id)sender;
 -(IBAction)onChange:(id)sender;
+-(void)mailComposeController:(MFMailComposeViewController *)controller didFinishWithResult:(MFMailComposeResult)result error:(NSError *)error;
+
 
 @end

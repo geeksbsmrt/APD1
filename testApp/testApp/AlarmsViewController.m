@@ -33,6 +33,8 @@
 		table.hidden = YES;
 		none.hidden = NO;
 		control.hidden = YES;
+		[[NSUserDefaults standardUserDefaults] removeObjectForKey:@"alarms"];
+		[[NSUserDefaults standardUserDefaults] synchronize];
 	} else {
 		table.hidden = NO;
 		none.hidden = YES;
@@ -45,13 +47,12 @@
 
 - (void)viewDidLoad
 {
-	alarmsList = [AlarmsList alarms];
-	if (alarmsList) {
-		alarms = alarmsList.alarms;
-	}
-	
-	
-	
+
+		alarmsList = [AlarmsList alarms];
+		if (alarmsList) {
+			alarms = alarmsList.alarms;
+		}
+
 		
     [super viewDidLoad];
 	// Do any additional setup after loading the view, typically from a nib.
@@ -93,6 +94,13 @@
 	// ensure we are deleting
 	if (editingStyle == UITableViewCellEditingStyleDelete) {
 		// remove data from arrays
+		NSArray *notifs = [[UIApplication sharedApplication] scheduledLocalNotifications];
+		
+		for (int i=0; i < notifs.count; i++) {
+			if ([[[notifs[i] userInfo] objectForKey:@"AlarmTime"] isEqualToString:[[alarms objectAtIndex:indexPath.row] alarmTime]]) {
+				[[UIApplication sharedApplication] cancelLocalNotification:notifs[i]];
+			}
+		}
 
 		[alarms removeObjectAtIndex:indexPath.row];
 		// remove table row
@@ -102,6 +110,8 @@
 			table.hidden = YES;
 			none.hidden = NO;
 			control.hidden = YES;
+			[[NSUserDefaults standardUserDefaults] removeObjectForKey:@"alarms"];
+			[[NSUserDefaults standardUserDefaults] synchronize];
 			[control setTitle:@"Edit" forState:UIControlStateNormal];
 			[table setEditing:NO];
 		}
@@ -182,7 +192,7 @@
 	AddViewController *avc = [segue destinationViewController];
 		
 	if ([segue.identifier isEqualToString:@"edit12"] || [segue.identifier isEqualToString:@"edit24"]) {
-		[avc setSending: [NSDictionary dictionaryWithObject:[NSNumber numberWithInt:path.row] forKey:@"Index"]];
+		[avc setSending: [NSDictionary dictionaryWithObject:[NSNumber numberWithInt:path.row] forKey:@"index"]];
 	}
 
 	
